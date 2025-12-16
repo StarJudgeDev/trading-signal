@@ -6,6 +6,7 @@ import cors from 'cors';
 import { connect } from './config/db.js';
 import router from './routes/index.js';
 import { logger } from './utils/logger.js';
+import { startPriceFetcher, stopPriceFetcher } from './services/priceFetcher.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -71,6 +72,9 @@ const start = async () => {
         port: PORT,
         environment: process.env.NODE_ENV || 'development'
       });
+      
+      // Start price fetcher service
+      startPriceFetcher();
     });
   } catch (error) {
     logger.error('❌ Server startup failed', {
@@ -102,11 +106,13 @@ process.on('unhandledRejection', (reason, promise) => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received, shutting down gracefully...');
+  stopPriceFetcher();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   logger.info('SIGINT received, shutting down gracefully...');
+  stopPriceFetcher();
   process.exit(0);
 });
 
