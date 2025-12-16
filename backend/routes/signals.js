@@ -1,5 +1,6 @@
 import express from 'express';
 import Signal from '../models/Signal.js';
+import { logger } from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -165,6 +166,13 @@ router.post('/:id/price', async (req, res) => {
     signal.updatedAt = new Date();
     await signal.save();
     
+    logger.db('Price updated successfully', { 
+      signalId: signal._id, 
+      price: priceValue, 
+      newTargetsReached,
+      status: signal.status
+    });
+    
     res.json({
       signal,
       newTargetsReached,
@@ -173,6 +181,224 @@ router.post('/:id/price', async (req, res) => {
         : 'Price updated'
     });
   } catch (error) {
+    logger.error('Error updating price', { signalId: req.params.id, error: error.message });
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Update price history entry
+router.put('/:id/price/:index', async (req, res) => {
+  try {
+    const { price, timestamp } = req.body;
+    const priceIndex = parseInt(req.params.index);
+    
+    if (!price || isNaN(price)) {
+      return res.status(400).json({ error: 'Valid price is required' });
+    }
+    
+    const signal = await Signal.findById(req.params.id);
+    
+    if (!signal) {
+      return res.status(404).json({ error: 'Signal not found' });
+    }
+    
+    if (!signal.priceHistory || priceIndex < 0 || priceIndex >= signal.priceHistory.length) {
+      return res.status(400).json({ error: 'Invalid price index' });
+    }
+    
+    const priceValue = parseFloat(price);
+    const priceTimestamp = timestamp ? new Date(timestamp) : signal.priceHistory[priceIndex].timestamp;
+    
+    // Update the price entry
+    signal.priceHistory[priceIndex].price = priceValue;
+    signal.priceHistory[priceIndex].timestamp = priceTimestamp;
+    
+    // Update current price if this is the latest entry
+    if (priceIndex === signal.priceHistory.length - 1) {
+      signal.currentPrice = priceValue;
+    }
+    
+    // Recalculate all targets based on price history
+    // Reset all targets first
+    signal.targets.forEach(target => {
+      target.reached = false;
+      target.reachedAt = null;
+    });
+    signal.reachedTargets = 0;
+    signal.updates = signal.updates || [];
+    
+    // Check all prices in chronological order
+    const isLong = signal.type === 'LONG';
+    const sortedPrices = [...signal.priceHistory].sort((a, b) => 
+      new Date(a.timestamp) - new Date(b.timestamp)
+    );
+    
+    for (const priceEntry of sortedPrices) {
+      for (let i = 0; i < signal.targets.length; i++) {
+        const target = signal.targets[i];
+        if (!target.reached) {
+          const targetReached = isLong 
+            ? priceEntry.price >= target.level 
+            : priceEntry.price <= target.level;
+          
+          if (targetReached) {
+            target.reached = true;
+            target.reachedAt = priceEntry.timestamp;
+            signal.reachedTargets++;
+            
+            signal.updates.push({
+              message: `TP${i + 1} reached at price ${priceEntry.price}`,
+              type: 'TP_REACHED',
+              timestamp: priceEntry.timestamp
+            });
+          }
+        }
+      }
+      
+      // Check stop loss
+      const stopLossHit = isLong 
+        ? priceEntry.price <= signal.stopLoss 
+        : priceEntry.price >= signal.stopLoss;
+      
+      if (stopLossHit) {
+        signal.status = 'STOPPED';
+        signal.updates.push({
+          message: `Stop loss hit at price ${priceEntry.price}`,
+          type: 'SL_HIT',
+          timestamp: priceEntry.timestamp
+        });
+        break;
+      }
+    }
+    
+    // Update status
+    if (signal.status !== 'STOPPED') {
+      if (signal.reachedTargets === signal.targets.length) {
+        signal.status = 'COMPLETED';
+      } else if (signal.reachedTargets > 0) {
+        signal.status = 'PARTIAL';
+      } else {
+        signal.status = 'ACTIVE';
+      }
+    }
+    
+    signal.updatedAt = new Date();
+    await signal.save();
+    
+    logger.db('Price history entry updated', { 
+      signalId: signal._id, 
+      index: priceIndex,
+      price: priceValue
+    });
+    
+    res.json(signal);
+  } catch (error) {
+    logger.error('Error updating price history', { signalId: req.params.id, error: error.message });
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Delete price history entry
+router.delete('/:id/price/:index', async (req, res) => {
+  try {
+    const priceIndex = parseInt(req.params.index);
+    
+    const signal = await Signal.findById(req.params.id);
+    
+    if (!signal) {
+      return res.status(404).json({ error: 'Signal not found' });
+    }
+    
+    if (!signal.priceHistory || priceIndex < 0 || priceIndex >= signal.priceHistory.length) {
+      return res.status(400).json({ error: 'Invalid price index' });
+    }
+    
+    // Remove the price entry
+    signal.priceHistory.splice(priceIndex, 1);
+    
+    // Update current price if there are remaining entries
+    if (signal.priceHistory.length > 0) {
+      const latestPrice = signal.priceHistory[signal.priceHistory.length - 1];
+      signal.currentPrice = latestPrice.price;
+    } else {
+      signal.currentPrice = null;
+    }
+    
+    // Recalculate all targets based on remaining price history
+    // Reset all targets first
+    signal.targets.forEach(target => {
+      target.reached = false;
+      target.reachedAt = null;
+    });
+    signal.reachedTargets = 0;
+    signal.updates = signal.updates || [];
+    
+    // Check all remaining prices in chronological order
+    const isLong = signal.type === 'LONG';
+    const sortedPrices = [...signal.priceHistory].sort((a, b) => 
+      new Date(a.timestamp) - new Date(b.timestamp)
+    );
+    
+    for (const priceEntry of sortedPrices) {
+      for (let i = 0; i < signal.targets.length; i++) {
+        const target = signal.targets[i];
+        if (!target.reached) {
+          const targetReached = isLong 
+            ? priceEntry.price >= target.level 
+            : priceEntry.price <= target.level;
+          
+          if (targetReached) {
+            target.reached = true;
+            target.reachedAt = priceEntry.timestamp;
+            signal.reachedTargets++;
+            
+            signal.updates.push({
+              message: `TP${i + 1} reached at price ${priceEntry.price}`,
+              type: 'TP_REACHED',
+              timestamp: priceEntry.timestamp
+            });
+          }
+        }
+      }
+      
+      // Check stop loss
+      const stopLossHit = isLong 
+        ? priceEntry.price <= signal.stopLoss 
+        : priceEntry.price >= signal.stopLoss;
+      
+      if (stopLossHit) {
+        signal.status = 'STOPPED';
+        signal.updates.push({
+          message: `Stop loss hit at price ${priceEntry.price}`,
+          type: 'SL_HIT',
+          timestamp: priceEntry.timestamp
+        });
+        break;
+      }
+    }
+    
+    // Update status
+    if (signal.status !== 'STOPPED') {
+      if (signal.reachedTargets === signal.targets.length) {
+        signal.status = 'COMPLETED';
+      } else if (signal.reachedTargets > 0) {
+        signal.status = 'PARTIAL';
+      } else {
+        signal.status = 'ACTIVE';
+      }
+    }
+    
+    signal.updatedAt = new Date();
+    await signal.save();
+    
+    logger.db('Price history entry deleted', { 
+      signalId: signal._id, 
+      index: priceIndex
+    });
+    
+    res.json(signal);
+  } catch (error) {
+    logger.error('Error deleting price history', { signalId: req.params.id, error: error.message });
     res.status(400).json({ error: error.message });
   }
 });

@@ -70,8 +70,11 @@ function Signals() {
   }
 
   const handlePriceUpdated = (data) => {
-    setPriceInputSignal(null)
-    fetchSignals()
+    // Update the signal in priceInputSignal state with fresh data to show updated price history
+    if (data.signal) {
+      setPriceInputSignal(data.signal)
+    }
+    fetchSignals() // Refresh the signals list
     if (data.newTargetsReached > 0) {
       alert(`${data.newTargetsReached} target(s) reached!`)
     }
@@ -109,6 +112,14 @@ function Signals() {
           signal={updatingSignal}
           onUpdate={handleSignalUpdated}
           onCancel={() => setUpdatingSignal(null)}
+        />
+      )}
+
+      {priceInputSignal && (
+        <PriceInput
+          signal={priceInputSignal}
+          onPriceUpdated={handlePriceUpdated}
+          onCancel={() => setPriceInputSignal(null)}
         />
       )}
       
