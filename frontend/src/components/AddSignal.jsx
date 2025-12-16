@@ -16,7 +16,8 @@ function AddSignal({ onSignalAdded, onCancel }) {
     stopLoss: '',
     risk: '',
     leverage: '',
-    targets: ['']
+    targets: [''],
+    signalDateTime: new Date().toISOString().slice(0, 16) // Default to current date/time (YYYY-MM-DDTHH:mm format)
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -99,6 +100,11 @@ function AddSignal({ onSignalAdded, onCancel }) {
         pair = formData.symbol.includes('/') ? formData.symbol : `${formData.symbol}/USDT`
       }
 
+      // Parse date/time or use current date/time
+      const signalDate = formData.signalDateTime 
+        ? new Date(formData.signalDateTime)
+        : new Date()
+
       const signalData = {
         channelId: formData.channelId,
         channelName: channel.name,
@@ -113,9 +119,9 @@ function AddSignal({ onSignalAdded, onCancel }) {
         },
         targets: validTargets,
         stopLoss: parseFloat(formData.stopLoss),
-        risk: formData.risk || undefined,
         leverage: formData.leverage || undefined,
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        createdAt: signalDate
       }
 
       await axios.post(`${API_BASE}/signals`, signalData)
@@ -132,7 +138,8 @@ function AddSignal({ onSignalAdded, onCancel }) {
         stopLoss: '',
         risk: '',
         leverage: '',
-        targets: ['']
+        targets: [''],
+        signalDateTime: new Date().toISOString().slice(0, 16)
       })
 
       if (onSignalAdded) {
@@ -348,14 +355,14 @@ function AddSignal({ onSignalAdded, onCancel }) {
 
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
-              Risk (optional)
+              Leverage (optional)
             </label>
             <input
               type="text"
-              name="risk"
-              value={formData.risk}
+              name="leverage"
+              value={formData.leverage}
               onChange={handleChange}
-              placeholder="$BAS"
+              placeholder="2x-3x"
               style={{
                 width: '100%',
                 padding: '0.5rem',
@@ -369,14 +376,13 @@ function AddSignal({ onSignalAdded, onCancel }) {
 
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
-              Leverage (optional)
+              Signal Date & Time (default: current)
             </label>
             <input
-              type="text"
-              name="leverage"
-              value={formData.leverage}
+              type="datetime-local"
+              name="signalDateTime"
+              value={formData.signalDateTime}
               onChange={handleChange}
-              placeholder="2x-3x"
               style={{
                 width: '100%',
                 padding: '0.5rem',

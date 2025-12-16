@@ -3,9 +3,9 @@ import axios from 'axios'
 
 const API_BASE = '/api'
 
-function UpdateSignal({ signal, onUpdate, onCancel }) {
-  const [updateType, setUpdateType] = useState('UPDATE')
-  const [message, setMessage] = useState('')
+function PriceInput({ signal, onPriceUpdated, onCancel }) {
+  const [price, setPrice] = useState('')
+  const [priceDateTime, setPriceDateTime] = useState(new Date().toISOString().slice(0, 16))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -15,36 +15,27 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
     setLoading(true)
 
     try {
-      let updatedSignal = { ...signal }
+      if (!price || isNaN(price)) {
+        setError('Please enter a valid price')
+        setLoading(false)
+        return
+      }
 
-      // Add update message
-      updatedSignal.updates = updatedSignal.updates || []
-      updatedSignal.updates.push({
-        message: message || `Update`,
-        type: updateType,
-        timestamp: new Date()
+      const response = await axios.post(`${API_BASE}/signals/${signal._id}/price`, {
+        price: parseFloat(price),
+        timestamp: priceDateTime ? new Date(priceDateTime).toISOString() : new Date().toISOString()
       })
 
-      // Handle different update types
-      if (updateType === 'SL_HIT') {
-        updatedSignal.status = 'STOPPED'
-      } else if (updateType === 'PROFIT_LOCKED') {
-        // Keep current status but mark as partial if not already
-        if (updatedSignal.status === 'ACTIVE') {
-          updatedSignal.status = 'PARTIAL'
-        }
-      }
+      // Reset form
+      setPrice('')
+      setPriceDateTime(new Date().toISOString().slice(0, 16))
 
-      updatedSignal.updatedAt = new Date()
-
-      await axios.put(`${API_BASE}/signals/${signal._id}`, updatedSignal)
-
-      if (onUpdate) {
-        onUpdate()
+      if (onPriceUpdated) {
+        onPriceUpdated(response.data)
       }
     } catch (error) {
-      setError(error.response?.data?.error || 'Failed to update signal')
-      console.error('Error updating signal:', error)
+      setError(error.response?.data?.error || 'Failed to update price')
+      console.error('Error updating price:', error)
     } finally {
       setLoading(false)
     }
@@ -52,7 +43,7 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
 
   return (
     <div className="card">
-      <h3>Update Signal: {signal.pair}</h3>
+      <h3>Update Price: {signal.pair}</h3>
       {error && (
         <div style={{
           padding: '0.75rem',
@@ -70,6 +61,7 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
         <div><strong>Channel:</strong> {signal.channelName}</div>
         <div><strong>Type:</strong> {signal.type}</div>
         <div><strong>Status:</strong> {signal.status}</div>
+        <div><strong>Current Price:</strong> {signal.currentPrice || 'N/A'}</div>
         <div><strong>Reached Targets:</strong> {signal.reachedTargets || 0} / {signal.targets.length}</div>
         <div style={{ marginTop: '0.5rem' }}>
           <strong>Targets:</strong>
@@ -91,13 +83,14 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
-            Update Type *
+            Token Price *
           </label>
-          <select
-            value={updateType}
-            onChange={(e) => {
-              setUpdateType(e.target.value)
-            }}
+          <input
+            type="number"
+            step="any"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder="Enter current token price"
             required
             style={{
               width: '100%',
@@ -107,32 +100,38 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
               borderRadius: '0.5rem',
               color: '#e2e8f0'
             }}
-          >
-            <option value="PROFIT_LOCKED">Profit Locked / Breakeven</option>
-            <option value="SL_HIT">Stop Loss Hit</option>
-            <option value="UPDATE">General Update</option>
-          </select>
+          />
         </div>
 
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
-            Update Message (optional)
+            Price Date & Time (default: current)
           </label>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="e.g., We've successfully hit two targets on this trade..."
-            rows="3"
+          <input
+            type="datetime-local"
+            value={priceDateTime}
+            onChange={(e) => setPriceDateTime(e.target.value)}
             style={{
               width: '100%',
               padding: '0.5rem',
               background: '#0f172a',
               border: '1px solid #334155',
               borderRadius: '0.5rem',
-              color: '#e2e8f0',
-              resize: 'vertical'
+              color: '#e2e8f0'
             }}
           />
+        </div>
+
+        <div style={{ 
+          padding: '0.75rem', 
+          background: '#1e293b', 
+          border: '1px solid #334155', 
+          borderRadius: '0.5rem',
+          marginBottom: '1rem',
+          fontSize: '0.875rem',
+          color: '#94a3b8'
+        }}>
+          <strong>Note:</strong> If the price reaches or exceeds any target (TP), it will be automatically marked as reached.
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
@@ -165,7 +164,7 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
               fontWeight: '600'
             }}
           >
-            {loading ? 'Updating...' : 'Update Signal'}
+            {loading ? 'Updating...' : 'Update Price'}
           </button>
         </div>
       </form>
@@ -173,4 +172,4 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
   )
 }
 
-export default UpdateSignal
+export default PriceInput

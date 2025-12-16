@@ -2,6 +2,7 @@ import express from 'express';
 import Channel from '../models/Channel.js';
 import Signal from '../models/Signal.js';
 import { logger } from '../utils/logger.js';
+import { calculateTotalWinRate, isWin } from '../utils/winRate.js';
 
 const router = express.Router();
 
@@ -89,20 +90,23 @@ router.get('/:id/stats', async (req, res) => {
     
     const signals = await Signal.find({ channelId: channel._id });
     
+    // Calculate win rate using new formula (TP1=0.3, TP2=0.6, TP3+=1.0)
+    const channelWinRate = calculateTotalWinRate(signals);
+    const totalWins = signals.filter(s => isWin(s)).length;
+    
     const stats = {
       totalSignals: signals.length,
       active: signals.filter(s => s.status === 'ACTIVE').length,
       completed: signals.filter(s => s.status === 'COMPLETED').length,
       stopped: signals.filter(s => s.status === 'STOPPED').length,
       partial: signals.filter(s => s.status === 'PARTIAL').length,
-      totalWins: signals.filter(s => s.status === 'COMPLETED' || s.reachedTargets > 0).length,
+      totalWins: totalWins,
       totalLosses: signals.filter(s => s.status === 'STOPPED').length,
-      winRate: 0,
+      winRate: (channelWinRate * 100).toFixed(2),
       averageTargetsReached: 0
     };
     
     if (stats.totalSignals > 0) {
-      stats.winRate = ((stats.totalWins / stats.totalSignals) * 100).toFixed(2);
       const totalTargetsReached = signals.reduce((sum, s) => sum + s.reachedTargets, 0);
       stats.averageTargetsReached = (totalTargetsReached / stats.totalSignals).toFixed(2);
     }

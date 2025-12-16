@@ -43,12 +43,13 @@ const signalSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
-  risk: {
-    type: String
-  },
   leverage: {
     type: String
   },
+  priceHistory: [{
+    price: { type: Number, required: true },
+    timestamp: { type: Date, default: Date.now }
+  }],
   status: {
     type: String,
     enum: ['ACTIVE', 'COMPLETED', 'STOPPED', 'PARTIAL'],

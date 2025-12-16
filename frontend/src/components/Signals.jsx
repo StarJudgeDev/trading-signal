@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import AddSignal from './AddSignal'
 import UpdateSignal from './UpdateSignal'
+import PriceInput from './PriceInput'
 
 const API_BASE = '/api'
 
@@ -15,6 +16,7 @@ function Signals() {
   const [channels, setChannels] = useState([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [updatingSignal, setUpdatingSignal] = useState(null)
+  const [priceInputSignal, setPriceInputSignal] = useState(null)
 
   useEffect(() => {
     fetchChannels()
@@ -65,6 +67,14 @@ function Signals() {
   const handleSignalUpdated = () => {
     setUpdatingSignal(null)
     fetchSignals()
+  }
+
+  const handlePriceUpdated = (data) => {
+    setPriceInputSignal(null)
+    fetchSignals()
+    if (data.newTargetsReached > 0) {
+      alert(`${data.newTargetsReached} target(s) reached!`)
+    }
   }
 
   return (
@@ -206,20 +216,36 @@ function Signals() {
                     </td>
                     <td>{getStatusBadge(signal.status)}</td>
                     <td>
-                      <button
-                        onClick={() => setUpdatingSignal(signal)}
-                        style={{
-                          padding: '0.25rem 0.75rem',
-                          background: '#3b82f6',
-                          border: 'none',
-                          borderRadius: '0.375rem',
-                          color: 'white',
-                          cursor: 'pointer',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        Update
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => setPriceInputSignal(signal)}
+                          style={{
+                            padding: '0.25rem 0.75rem',
+                            background: '#10b981',
+                            border: 'none',
+                            borderRadius: '0.375rem',
+                            color: 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          Price
+                        </button>
+                        <button
+                          onClick={() => setUpdatingSignal(signal)}
+                          style={{
+                            padding: '0.25rem 0.75rem',
+                            background: '#3b82f6',
+                            border: 'none',
+                            borderRadius: '0.375rem',
+                            color: 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          Update
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

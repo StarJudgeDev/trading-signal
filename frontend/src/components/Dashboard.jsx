@@ -4,14 +4,16 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 
 const API_BASE = '/api'
 
-function Dashboard({ overview }) {
+function Dashboard({ overview, refreshTrigger, isActive }) {
   const [bestChannels, setBestChannels] = useState([])
   const [trends, setTrends] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    if (isActive) {
+      fetchData()
+    }
+  }, [refreshTrigger, isActive])
 
   const fetchData = async () => {
     try {

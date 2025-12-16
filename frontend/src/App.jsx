@@ -12,19 +12,38 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [overview, setOverview] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   useEffect(() => {
     fetchOverview()
   }, [])
 
+  // Refetch overview when switching to dashboard tab
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      fetchOverview()
+    }
+  }, [activeTab])
+
   const fetchOverview = async () => {
     try {
       const res = await axios.get(`${API_BASE}/analysis/overview`)
       setOverview(res.data)
+      // Trigger dashboard refresh
+      setRefreshTrigger(prev => prev + 1)
     } catch (error) {
       console.error('Error fetching overview:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Handle tab change
+  const handleTabChange = (tab) => {
+    setActiveTab(tab)
+    // If switching to dashboard, refresh data
+    if (tab === 'dashboard') {
+      fetchOverview()
     }
   }
 
@@ -35,25 +54,25 @@ function App() {
         <nav className="nav-tabs">
           <button
             className={activeTab === 'dashboard' ? 'active' : ''}
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => handleTabChange('dashboard')}
           >
             Dashboard
           </button>
           <button
             className={activeTab === 'signals' ? 'active' : ''}
-            onClick={() => setActiveTab('signals')}
+            onClick={() => handleTabChange('signals')}
           >
             Signals
           </button>
           <button
             className={activeTab === 'channels' ? 'active' : ''}
-            onClick={() => setActiveTab('channels')}
+            onClick={() => handleTabChange('channels')}
           >
             Channels
           </button>
           <button
             className={activeTab === 'analysis' ? 'active' : ''}
-            onClick={() => setActiveTab('analysis')}
+            onClick={() => handleTabChange('analysis')}
           >
             Analysis
           </button>
@@ -65,7 +84,7 @@ function App() {
           <div className="loading">Loading...</div>
         ) : (
           <>
-            {activeTab === 'dashboard' && <Dashboard overview={overview} />}
+            {activeTab === 'dashboard' && <Dashboard overview={overview} refreshTrigger={refreshTrigger} isActive={activeTab === 'dashboard'} />}
             {activeTab === 'signals' && <Signals />}
             {activeTab === 'channels' && <Channels />}
             {activeTab === 'analysis' && <Analysis />}
@@ -77,4 +96,3 @@ function App() {
 }
 
 export default App
-

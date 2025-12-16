@@ -82,36 +82,96 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Mark target as reached
-router.post('/:id/targets/:targetIndex/reach', async (req, res) => {
+// Update price and automatically check TPs
+router.post('/:id/price', async (req, res) => {
   try {
+    const { price, timestamp } = req.body;
+    
+    if (!price || isNaN(price)) {
+      return res.status(400).json({ error: 'Valid price is required' });
+    }
+    
     const signal = await Signal.findById(req.params.id);
     
     if (!signal) {
       return res.status(404).json({ error: 'Signal not found' });
     }
     
-    const targetIndex = parseInt(req.params.targetIndex);
-    if (targetIndex < 0 || targetIndex >= signal.targets.length) {
-      return res.status(400).json({ error: 'Invalid target index' });
-    }
+    const priceValue = parseFloat(price);
+    const priceTimestamp = timestamp ? new Date(timestamp) : new Date();
     
-    if (!signal.targets[targetIndex].reached) {
-      signal.targets[targetIndex].reached = true;
-      signal.targets[targetIndex].reachedAt = new Date();
-      signal.reachedTargets += 1;
-      
-      if (signal.reachedTargets === signal.targets.length) {
-        signal.status = 'COMPLETED';
-      } else if (signal.reachedTargets > 0) {
-        signal.status = 'PARTIAL';
+    // Add price to history
+    signal.priceHistory = signal.priceHistory || [];
+    signal.priceHistory.push({
+      price: priceValue,
+      timestamp: priceTimestamp
+    });
+    
+    // Update current price
+    signal.currentPrice = priceValue;
+    
+    // Check if price reached any targets (for LONG: price >= target, for SHORT: price <= target)
+    let newTargetsReached = 0;
+    const isLong = signal.type === 'LONG';
+    
+    for (let i = 0; i < signal.targets.length; i++) {
+      const target = signal.targets[i];
+      if (!target.reached) {
+        const targetReached = isLong 
+          ? priceValue >= target.level 
+          : priceValue <= target.level;
+        
+        if (targetReached) {
+          target.reached = true;
+          target.reachedAt = priceTimestamp;
+          newTargetsReached++;
+          
+          // Add update message
+          signal.updates = signal.updates || [];
+          signal.updates.push({
+            message: `TP${i + 1} reached at price ${priceValue}`,
+            type: 'TP_REACHED',
+            timestamp: priceTimestamp
+          });
+        }
       }
-      
-      signal.updatedAt = new Date();
-      await signal.save();
     }
     
-    res.json(signal);
+    // Update reached targets count
+    signal.reachedTargets = (signal.reachedTargets || 0) + newTargetsReached;
+    
+    // Update status
+    if (signal.reachedTargets === signal.targets.length) {
+      signal.status = 'COMPLETED';
+    } else if (signal.reachedTargets > 0) {
+      signal.status = 'PARTIAL';
+    }
+    
+    // Check stop loss (for LONG: price <= stopLoss, for SHORT: price >= stopLoss)
+    const stopLossHit = isLong 
+      ? priceValue <= signal.stopLoss 
+      : priceValue >= signal.stopLoss;
+    
+    if (stopLossHit && signal.status !== 'STOPPED') {
+      signal.status = 'STOPPED';
+      signal.updates = signal.updates || [];
+      signal.updates.push({
+        message: `Stop loss hit at price ${priceValue}`,
+        type: 'SL_HIT',
+        timestamp: priceTimestamp
+      });
+    }
+    
+    signal.updatedAt = new Date();
+    await signal.save();
+    
+    res.json({
+      signal,
+      newTargetsReached,
+      message: newTargetsReached > 0 
+        ? `${newTargetsReached} target(s) reached` 
+        : 'Price updated'
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
