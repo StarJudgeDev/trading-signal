@@ -47,6 +47,11 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Signal not found' });
     }
     
+    // Sort price history by timestamp (newest first)
+    if (signal.priceHistory && signal.priceHistory.length > 0) {
+      signal.priceHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    }
+    
     res.json(signal);
   } catch (error) {
     res.status(500).json({ error: error.message });
