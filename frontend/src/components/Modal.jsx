@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 function Modal({ isOpen, onClose, title, children, size = 'medium' }) {
   useEffect(() => {
@@ -21,7 +22,7 @@ function Modal({ isOpen, onClose, title, children, size = 'medium' }) {
     xlarge: { maxWidth: '1000px' }
   }
 
-  return (
+  const modalContent = (
     <div
       style={{
         position: 'fixed',
@@ -33,7 +34,7 @@ function Modal({ isOpen, onClose, title, children, size = 'medium' }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 1000,
+        zIndex: 9999,
         padding: '1rem'
       }}
       onClick={onClose}
@@ -46,12 +47,14 @@ function Modal({ isOpen, onClose, title, children, size = 'medium' }) {
           maxHeight: '90vh',
           overflowY: 'auto',
           position: 'relative',
-          margin: 'auto'
+          margin: 'auto',
+          backgroundColor: '#1e293b',
+          border: '1px solid #334155'
         }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h3 style={{ margin: 0 }}>{title}</h3>
+          <h3 style={{ margin: 0, color: '#e2e8f0' }}>{title}</h3>
           <button
             onClick={onClose}
             style={{
@@ -71,6 +74,8 @@ function Modal({ isOpen, onClose, title, children, size = 'medium' }) {
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }
 
 export default Modal

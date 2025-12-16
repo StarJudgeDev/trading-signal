@@ -59,7 +59,7 @@ function EditPriceModal({ isOpen, onClose, signal, priceEntry, priceIndex, onPri
     }
   }
 
-  if (!priceEntry) return null
+  if (!priceEntry || !signal) return null
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Price Entry" size="medium">

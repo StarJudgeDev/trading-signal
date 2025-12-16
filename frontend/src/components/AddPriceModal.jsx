@@ -59,8 +59,10 @@ function AddPriceModal({ isOpen, onClose, signal, onPriceAdded }) {
     }
   }
 
+  if (!signal) return null
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Add Price: ${signal?.pair || ''}`} size="medium">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Add Price: ${signal.pair}`} size="medium">
       {error && (
         <div style={{
           padding: '0.75rem',

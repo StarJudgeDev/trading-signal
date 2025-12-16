@@ -164,6 +164,41 @@ function SignalEdit() {
         </div>
       )}
 
+      {signal && (
+        <>
+          <AddPriceModal
+            isOpen={showAddPriceModal}
+            onClose={() => setShowAddPriceModal(false)}
+            signal={signal}
+            onPriceAdded={handlePriceAdded}
+          />
+
+          <EditPriceModal
+            isOpen={editingPriceEntry !== null}
+            onClose={() => {
+              setEditingPriceEntry(null)
+              setEditingPriceIndex(null)
+            }}
+            signal={signal}
+            priceEntry={editingPriceEntry}
+            priceIndex={editingPriceIndex}
+            onPriceUpdated={handlePriceUpdated}
+          />
+
+          <Modal
+            isOpen={showUpdateModal}
+            onClose={() => setShowUpdateModal(false)}
+            title={`Update Signal: ${signal.pair}`}
+            size="medium"
+          >
+            <UpdateSignal
+              signal={signal}
+              onUpdate={handleSignalUpdated}
+              onCancel={() => setShowUpdateModal(false)}
+            />
+          </Modal>
+        </>
+      )}
 
       {/* Signal Information */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
