@@ -1,0 +1,19 @@
+{
+  "name": "future-trading-signal-analyzer",
+  "version": "1.0.0",
+  "description": "Telegram trading signal analyzer with MongoDB",
+  "main": "index.js",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": ["trading", "signals", "telegram", "analysis"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+
