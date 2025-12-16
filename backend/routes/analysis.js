@@ -1,12 +1,16 @@
 import express from 'express';
 import Channel from '../models/Channel.js';
 import Signal from '../models/Signal.js';
+import { logger } from '../utils/logger.js';
 
 const router = express.Router();
 
 // Get overall statistics
 router.get('/overview', async (req, res) => {
   try {
+    logger.db('Fetching overview statistics');
+    const startTime = Date.now();
+    
     const channels = await Channel.find({ isActive: true });
     const signals = await Signal.find();
     
@@ -26,8 +30,16 @@ router.get('/overview', async (req, res) => {
       overview.overallWinRate = ((overview.totalWins / overview.totalSignals) * 100).toFixed(2);
     }
     
+    const duration = Date.now() - startTime;
+    logger.db('Overview statistics calculated', { 
+      totalChannels: overview.totalChannels,
+      totalSignals: overview.totalSignals,
+      duration: `${duration}ms`
+    });
+    
     res.json(overview);
   } catch (error) {
+    logger.error('Error fetching overview', { error: error.message, stack: error.stack });
     res.status(500).json({ error: error.message });
   }
 });
@@ -36,7 +48,11 @@ router.get('/overview', async (req, res) => {
 router.get('/best-channels', async (req, res) => {
   try {
     const { limit = 10 } = req.query;
+    logger.db('Fetching best performing channels', { limit });
+    const startTime = Date.now();
+    
     const channels = await Channel.find({ isActive: true });
+    logger.db(`Found ${channels.length} active channels`);
     
     const channelStats = await Promise.all(
       channels.map(async (channel) => {
@@ -68,8 +84,20 @@ router.get('/best-channels', async (req, res) => {
     const validStats = channelStats.filter(s => s !== null);
     validStats.sort((a, b) => parseFloat(b.winRate) - parseFloat(a.winRate));
     
+    const duration = Date.now() - startTime;
+    logger.db('Best channels calculated', { 
+      totalChannels: validStats.length,
+      returned: Math.min(validStats.length, parseInt(limit)),
+      duration: `${duration}ms`
+    });
+    
     res.json(validStats.slice(0, parseInt(limit)));
   } catch (error) {
+    logger.error('Error fetching best channels', { 
+      limit: req.query.limit, 
+      error: error.message,
+      stack: error.stack
+    });
     res.status(500).json({ error: error.message });
   }
 });
