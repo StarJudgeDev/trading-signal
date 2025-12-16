@@ -4,6 +4,16 @@ import { logger } from '../utils/logger.js';
 
 const router = express.Router();
 
+// Helper function to sort price history by timestamp (newest first)
+const sortPriceHistory = (priceHistory) => {
+  if (!priceHistory || priceHistory.length === 0) return;
+  priceHistory.sort((a, b) => {
+    const dateA = a.timestamp instanceof Date ? a.timestamp : new Date(a.timestamp);
+    const dateB = b.timestamp instanceof Date ? b.timestamp : new Date(b.timestamp);
+    return dateB - dateA; // Newest first (descending)
+  });
+};
+
 // Get all signals
 router.get('/', async (req, res) => {
   try {
@@ -48,9 +58,7 @@ router.get('/:id', async (req, res) => {
     }
     
     // Sort price history by timestamp (newest first)
-    if (signal.priceHistory && signal.priceHistory.length > 0) {
-      signal.priceHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    }
+    sortPriceHistory(signal.priceHistory);
     
     res.json(signal);
   } catch (error) {
@@ -63,6 +71,8 @@ router.post('/', async (req, res) => {
   try {
     const signal = new Signal(req.body);
     await signal.save();
+    // Sort price history by timestamp (newest first)
+    sortPriceHistory(signal.priceHistory);
     res.status(201).json(signal);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -81,6 +91,9 @@ router.put('/:id', async (req, res) => {
     if (!signal) {
       return res.status(404).json({ error: 'Signal not found' });
     }
+    
+    // Sort price history by timestamp (newest first)
+    sortPriceHistory(signal.priceHistory);
     
     res.json(signal);
   } catch (error) {
@@ -170,6 +183,9 @@ router.post('/:id/price', async (req, res) => {
     
     signal.updatedAt = new Date();
     await signal.save();
+    
+    // Sort price history by timestamp (newest first)
+    sortPriceHistory(signal.priceHistory);
     
     logger.db('Price updated successfully', { 
       signalId: signal._id, 
@@ -290,6 +306,9 @@ router.put('/:id/price/:index', async (req, res) => {
     signal.updatedAt = new Date();
     await signal.save();
     
+    // Sort price history by timestamp (newest first)
+    sortPriceHistory(signal.priceHistory);
+    
     logger.db('Price history entry updated', { 
       signalId: signal._id, 
       index: priceIndex,
@@ -395,6 +414,9 @@ router.delete('/:id/price/:index', async (req, res) => {
     
     signal.updatedAt = new Date();
     await signal.save();
+    
+    // Sort price history by timestamp (newest first)
+    sortPriceHistory(signal.priceHistory);
     
     logger.db('Price history entry deleted', { 
       signalId: signal._id, 
