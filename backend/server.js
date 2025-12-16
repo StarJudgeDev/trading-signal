@@ -1,10 +1,13 @@
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-import mongoose from 'mongoose';
-import signalRoutes from './routes/signals.js';
-import channelRoutes from './routes/channels.js';
-import analysisRoutes from './routes/analysis.js';
+import { connect } from './config/db.js';
+import router from './routes/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -19,28 +22,30 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.use('/api/signals', signalRoutes);
-app.use('/api/channels', channelRoutes);
-app.use('/api/analysis', analysisRoutes);
-
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/trading-signals')
-  .then(() => {
-    console.log('✅ Connected to MongoDB');
-    
-    // Start server
+// Routes
+app.use('/api', router);
+
+app.use(express.static('../frontend/dist'));
+app.get('*', (_, res) => {
+  res.sendFile('index.html', { root: path.join(__dirname, '../frontend/dist') });
+});
+
+const start = async () => {
+  try {
+    await connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/trading-signals');
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
-  })
-  .catch((error) => {
+  } catch (error) {
     console.error('❌ MongoDB connection error:', error);
     process.exit(1);
-  });
+  }
+};
+
+start();
 
