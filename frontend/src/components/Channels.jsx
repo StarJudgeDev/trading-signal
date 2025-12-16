@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import Modal from './Modal'
 import AddChannel from './AddChannel'
 
 const API_BASE = '/api'
@@ -70,12 +71,17 @@ function Channels() {
         </button>
       </div>
 
-      {showAddForm && (
+      <Modal
+        isOpen={showAddForm}
+        onClose={() => setShowAddForm(false)}
+        title="Add New Channel"
+        size="medium"
+      >
         <AddChannel
           onChannelAdded={handleChannelAdded}
           onCancel={() => setShowAddForm(false)}
         />
-      )}
+      </Modal>
       
       <div className="card">
         <h3>Channel List ({channels.length})</h3>

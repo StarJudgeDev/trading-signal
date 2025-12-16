@@ -62,8 +62,7 @@ function AddChannel({ onChannelAdded, onCancel }) {
   }
 
   return (
-    <div className="card">
-      <h3>Add New Channel</h3>
+    <div>
       {error && (
         <div style={{
           padding: '0.75rem',

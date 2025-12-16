@@ -1,21 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import PriceInput from './PriceInput'
+import Modal from './Modal'
+import AddPriceModal from './AddPriceModal'
+import EditPriceModal from './EditPriceModal'
 import UpdateSignal from './UpdateSignal'
 
 const API_BASE = '/api'
-
-// Helper to format datetime for input
-const formatDateTimeForInput = (timestamp) => {
-  const dt = new Date(timestamp)
-  const year = dt.getFullYear()
-  const month = String(dt.getMonth() + 1).padStart(2, '0')
-  const day = String(dt.getDate()).padStart(2, '0')
-  const hours = String(dt.getHours()).padStart(2, '0')
-  const minutes = String(dt.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day}T${hours}:${minutes}`
-}
 
 function SignalEdit() {
   const { id } = useParams()
@@ -23,11 +14,10 @@ function SignalEdit() {
   const [signal, setSignal] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [showPriceInput, setShowPriceInput] = useState(false)
-  const [showUpdateForm, setShowUpdateForm] = useState(false)
+  const [showAddPriceModal, setShowAddPriceModal] = useState(false)
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [editingPriceEntry, setEditingPriceEntry] = useState(null)
   const [editingPriceIndex, setEditingPriceIndex] = useState(null)
-  const [editPrice, setEditPrice] = useState('')
-  const [editDateTime, setEditDateTime] = useState('')
 
   useEffect(() => {
     fetchSignal()
@@ -46,44 +36,25 @@ function SignalEdit() {
     }
   }
 
-  const handlePriceUpdated = (data) => {
-    if (data.signal) {
-      setSignal(data.signal)
-    } else {
-      fetchSignal() // Refresh signal data
-    }
+  const handlePriceAdded = (data) => {
+    fetchSignal() // Refresh signal data
     if (data.newTargetsReached > 0) {
       alert(`${data.newTargetsReached} target(s) reached!`)
     }
   }
 
+  const handlePriceUpdated = () => {
+    fetchSignal() // Refresh signal data
+  }
+
   const handleSignalUpdated = () => {
-    setShowUpdateForm(false)
+    setShowUpdateModal(false)
     fetchSignal()
   }
 
   const startEdit = (index, priceEntry) => {
     setEditingPriceIndex(index)
-    setEditPrice(String(priceEntry.price))
-    setEditDateTime(formatDateTimeForInput(priceEntry.timestamp))
-  }
-
-  const handleEditPrice = async () => {
-    if (editingPriceIndex === null || !signal) return
-    
-    try {
-      await axios.put(`${API_BASE}/signals/${signal._id}/price/${editingPriceIndex}`, {
-        price: parseFloat(editPrice),
-        timestamp: editDateTime ? new Date(editDateTime).toISOString() : signal.priceHistory[editingPriceIndex].timestamp
-      })
-      
-      await fetchSignal()
-      setEditingPriceIndex(null)
-      setEditPrice('')
-      setEditDateTime('')
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update price')
-    }
+    setEditingPriceEntry(priceEntry)
   }
 
   const handleDeletePrice = async (index) => {
@@ -150,10 +121,10 @@ function SignalEdit() {
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
-            onClick={() => setShowPriceInput(!showPriceInput)}
+            onClick={() => setShowAddPriceModal(true)}
             style={{
               padding: '0.75rem 1.5rem',
-              background: showPriceInput ? '#475569' : '#10b981',
+              background: '#10b981',
               border: 'none',
               borderRadius: '0.5rem',
               color: 'white',
@@ -161,13 +132,13 @@ function SignalEdit() {
               fontWeight: '600'
             }}
           >
-            {showPriceInput ? 'Cancel' : '+ Add Price'}
+            + Add Price
           </button>
           <button
-            onClick={() => setShowUpdateForm(!showUpdateForm)}
+            onClick={() => setShowUpdateModal(true)}
             style={{
               padding: '0.75rem 1.5rem',
-              background: showUpdateForm ? '#475569' : '#3b82f6',
+              background: '#3b82f6',
               border: 'none',
               borderRadius: '0.5rem',
               color: 'white',
@@ -175,7 +146,7 @@ function SignalEdit() {
               fontWeight: '600'
             }}
           >
-            {showUpdateForm ? 'Cancel' : 'Update Signal'}
+            Update Signal
           </button>
         </div>
       </div>
@@ -193,21 +164,6 @@ function SignalEdit() {
         </div>
       )}
 
-      {showPriceInput && (
-        <PriceInput
-          signal={signal}
-          onPriceUpdated={handlePriceUpdated}
-          onCancel={() => setShowPriceInput(false)}
-        />
-      )}
-
-      {showUpdateForm && (
-        <UpdateSignal
-          signal={signal}
-          onUpdate={handleSignalUpdated}
-          onCancel={() => setShowUpdateForm(false)}
-        />
-      )}
 
       {/* Signal Information */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
@@ -317,129 +273,50 @@ function SignalEdit() {
                 </tr>
               </thead>
               <tbody>
-                {[...signal.priceHistory].reverse().map((priceEntry, idx) => {
-                  const originalIndex = signal.priceHistory.length - 1 - idx
-                  const isEditing = editingPriceIndex === originalIndex
-                  
-                  return (
-                    <tr key={idx}>
-                      <td style={{ color: '#e2e8f0' }}>
-                        {isEditing ? (
-                          <input
-                            type="datetime-local"
-                            value={editDateTime}
-                            onChange={(e) => setEditDateTime(e.target.value)}
-                            style={{
-                              padding: '0.5rem',
-                              background: '#1e293b',
-                              border: '1px solid #475569',
-                              borderRadius: '0.25rem',
-                              color: '#e2e8f0',
-                              fontSize: '0.875rem'
-                            }}
-                          />
-                        ) : (
-                          new Date(priceEntry.timestamp).toLocaleString()
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'right', color: '#e2e8f0', fontWeight: '600' }}>
-                        {isEditing ? (
-                          <input
-                            type="number"
-                            step="any"
-                            value={editPrice}
-                            onChange={(e) => setEditPrice(e.target.value)}
-                            style={{
-                              padding: '0.5rem',
-                              background: '#1e293b',
-                              border: '1px solid #475569',
-                              borderRadius: '0.25rem',
-                              color: '#e2e8f0',
-                              fontSize: '0.875rem',
-                              width: '120px',
-                              textAlign: 'right'
-                            }}
-                          />
-                        ) : (
-                          priceEntry.price
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        {isEditing ? (
-                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                            <button
-                              type="button"
-                              onClick={handleEditPrice}
-                              style={{
-                                padding: '0.5rem 1rem',
-                                background: '#10b981',
-                                border: 'none',
-                                borderRadius: '0.25rem',
-                                color: 'white',
-                                cursor: 'pointer',
-                                fontSize: '0.875rem'
-                              }}
-                            >
-                              Save
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingPriceIndex(null)
-                                setEditPrice('')
-                                setEditDateTime('')
-                              }}
-                              style={{
-                                padding: '0.5rem 1rem',
-                                background: '#475569',
-                                border: 'none',
-                                borderRadius: '0.25rem',
-                                color: 'white',
-                                cursor: 'pointer',
-                                fontSize: '0.875rem'
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                            <button
-                              type="button"
-                              onClick={() => startEdit(originalIndex, priceEntry)}
-                              style={{
-                                padding: '0.5rem 1rem',
-                                background: '#3b82f6',
-                                border: 'none',
-                                borderRadius: '0.25rem',
-                                color: 'white',
-                                cursor: 'pointer',
-                                fontSize: '0.875rem'
-                              }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeletePrice(originalIndex)}
-                              style={{
-                                padding: '0.5rem 1rem',
-                                background: '#ef4444',
-                                border: 'none',
-                                borderRadius: '0.25rem',
-                                color: 'white',
-                                cursor: 'pointer',
-                                fontSize: '0.875rem'
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
+                {signal.priceHistory.map((priceEntry, idx) => (
+                  <tr key={idx}>
+                    <td style={{ color: '#e2e8f0' }}>
+                      {new Date(priceEntry.timestamp).toLocaleString()}
+                    </td>
+                    <td style={{ textAlign: 'right', color: '#e2e8f0', fontWeight: '600' }}>
+                      {priceEntry.price}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(idx, priceEntry)}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            background: '#3b82f6',
+                            border: 'none',
+                            borderRadius: '0.25rem',
+                            color: 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePrice(idx)}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            background: '#ef4444',
+                            border: 'none',
+                            borderRadius: '0.25rem',
+                            color: 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

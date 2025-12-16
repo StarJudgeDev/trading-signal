@@ -178,8 +178,8 @@ function PriceInput({ signal: initialSignal, onPriceUpdated, onCancel }) {
                 </tr>
               </thead>
               <tbody>
-                {[...signal.priceHistory].reverse().map((priceEntry, idx) => {
-                  const originalIndex = signal.priceHistory.length - 1 - idx
+                {signal.priceHistory.map((priceEntry, idx) => {
+                  const originalIndex = idx
                   const isEditing = editingPriceIndex === originalIndex
                   
                   return (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import Modal from './Modal'
 import AddSignal from './AddSignal'
 
 const API_BASE = '/api'
@@ -82,12 +83,17 @@ function SignalsList() {
         </button>
       </div>
 
-      {showAddForm && (
+      <Modal
+        isOpen={showAddForm}
+        onClose={() => setShowAddForm(false)}
+        title="Add New Signal"
+        size="large"
+      >
         <AddSignal
           onSignalAdded={handleSignalAdded}
           onCancel={() => setShowAddForm(false)}
         />
-      )}
+      </Modal>
       
       <div className="card">
         <h3>Filters</h3>

@@ -51,8 +51,7 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
   }
 
   return (
-    <div className="card">
-      <h3>Update Signal: {signal.pair}</h3>
+    <div>
       {error && (
         <div style={{
           padding: '0.75rem',
