@@ -3,10 +3,22 @@ import axios from 'axios'
 
 const API_BASE = '/api'
 
+// Helper to format datetime for input
+const formatDateTimeForInput = (timestamp) => {
+  const dt = new Date(timestamp)
+  const year = dt.getFullYear()
+  const month = String(dt.getMonth() + 1).padStart(2, '0')
+  const day = String(dt.getDate()).padStart(2, '0')
+  const hours = String(dt.getHours()).padStart(2, '0')
+  const minutes = String(dt.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
 function UpdateSignal({ signal, onUpdate, onCancel }) {
   const [updateType, setUpdateType] = useState('UPDATE')
   const [message, setMessage] = useState('')
   const [status, setStatus] = useState(signal?.status || 'ACTIVE')
+  const [originalStatus, setOriginalStatus] = useState(signal?.status || 'ACTIVE')
   const [type, setType] = useState(signal?.type || 'LONG')
   const [entryMin, setEntryMin] = useState(signal?.entry?.min || '')
   const [entryMax, setEntryMax] = useState(signal?.entry?.max || '')
@@ -14,12 +26,14 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
   const [stopLoss, setStopLoss] = useState(signal?.stopLoss || '')
   const [leverage, setLeverage] = useState(signal?.leverage || '')
   const [targets, setTargets] = useState(signal?.targets?.map(t => t.level) || [''])
+  const [createdAt, setCreatedAt] = useState(signal?.createdAt ? formatDateTimeForInput(signal.createdAt) : '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (signal) {
       setStatus(signal.status || 'ACTIVE')
+      setOriginalStatus(signal.status || 'ACTIVE')
       setType(signal.type || 'LONG')
       setEntryMin(signal.entry?.min || '')
       setEntryMax(signal.entry?.max || '')
@@ -27,6 +41,7 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
       setStopLoss(signal.stopLoss || '')
       setLeverage(signal.leverage || '')
       setTargets(signal.targets?.map(t => t.level) || [''])
+      setCreatedAt(signal.createdAt ? formatDateTimeForInput(signal.createdAt) : '')
     }
   }, [signal])
 
@@ -185,6 +200,47 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
 
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
+              Symbol *
+            </label>
+            <input
+              type="text"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              placeholder="BAS or BTC"
+              required
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '0.5rem',
+                color: '#e2e8f0'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
+              Pair (optional, auto: SYMBOL/USDT)
+            </label>
+            <input
+              type="text"
+              value={pair}
+              onChange={(e) => setPair(e.target.value)}
+              placeholder="BAS/USDT"
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '0.5rem',
+                color: '#e2e8f0'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
               Entry Min *
             </label>
             <input
@@ -284,7 +340,40 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
               }}
             />
           </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
+              Signal Date & Time
+            </label>
+            <input
+              type="datetime-local"
+              value={createdAt}
+              onChange={(e) => setCreatedAt(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '0.5rem',
+                color: '#e2e8f0'
+              }}
+            />
+          </div>
         </div>
+        
+        {status !== originalStatus && (
+          <div style={{
+            padding: '0.75rem',
+            background: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '0.5rem',
+            marginBottom: '1rem',
+            fontSize: '0.875rem',
+            color: '#fbbf24'
+          }}>
+            <strong>Note:</strong> Status changed from {originalStatus} to {status}. All target reached flags will be reset.
+          </div>
+        )}
 
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>

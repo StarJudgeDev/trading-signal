@@ -82,6 +82,25 @@ router.post('/', async (req, res) => {
 // Update signal
 router.put('/:id', async (req, res) => {
   try {
+    // Get the original signal to check if status changed
+    const originalSignal = await Signal.findById(req.params.id);
+    
+    if (!originalSignal) {
+      return res.status(404).json({ error: 'Signal not found' });
+    }
+    
+    const statusChanged = req.body.status && req.body.status !== originalSignal.status;
+    
+    // If status changed, reset all target reached flags and reachedTargets count
+    if (statusChanged && req.body.targets) {
+      req.body.targets = req.body.targets.map(target => ({
+        ...target,
+        reached: false,
+        reachedAt: null
+      }));
+      req.body.reachedTargets = 0;
+    }
+    
     const signal = await Signal.findByIdAndUpdate(
       req.params.id,
       { ...req.body, updatedAt: new Date() },
