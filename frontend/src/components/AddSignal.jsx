@@ -3,6 +3,17 @@ import axios from 'axios'
 
 const API_BASE = '/api'
 
+// Helper function to get current local datetime in format for datetime-local input
+const getCurrentLocalDateTime = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
 function AddSignal({ onSignalAdded, onCancel }) {
   const [channels, setChannels] = useState([])
   const [formData, setFormData] = useState({
@@ -17,7 +28,7 @@ function AddSignal({ onSignalAdded, onCancel }) {
     risk: '',
     leverage: '',
     targets: [''],
-    signalDateTime: new Date().toISOString().slice(0, 16) // Default to current date/time (YYYY-MM-DDTHH:mm format)
+    signalDateTime: getCurrentLocalDateTime() // Default to current local date/time
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -139,7 +150,7 @@ function AddSignal({ onSignalAdded, onCancel }) {
         risk: '',
         leverage: '',
         targets: [''],
-        signalDateTime: new Date().toISOString().slice(0, 16)
+        signalDateTime: getCurrentLocalDateTime()
       })
 
       if (onSignalAdded) {

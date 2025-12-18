@@ -57,7 +57,7 @@ export function createApp() {
   // Serve static files from frontend build
   app.use(express.static('../frontend/dist'));
   app.get('*', (_, res) => {
-    res.sendFile('index.html', { root: path.join(__dirname, '../frontend/dist') });
+    res.sendFile('index.html', { root: path.join(__dirname, '../../frontend/dist') });
   });
 
   return app;

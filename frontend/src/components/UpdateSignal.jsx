@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 
 const API_BASE = '/api'
@@ -6,8 +6,44 @@ const API_BASE = '/api'
 function UpdateSignal({ signal, onUpdate, onCancel }) {
   const [updateType, setUpdateType] = useState('UPDATE')
   const [message, setMessage] = useState('')
+  const [status, setStatus] = useState(signal?.status || 'ACTIVE')
+  const [type, setType] = useState(signal?.type || 'LONG')
+  const [entryMin, setEntryMin] = useState(signal?.entry?.min || '')
+  const [entryMax, setEntryMax] = useState(signal?.entry?.max || '')
+  const [userEntry, setUserEntry] = useState(signal?.entry?.userEntry || '')
+  const [stopLoss, setStopLoss] = useState(signal?.stopLoss || '')
+  const [leverage, setLeverage] = useState(signal?.leverage || '')
+  const [targets, setTargets] = useState(signal?.targets?.map(t => t.level) || [''])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (signal) {
+      setStatus(signal.status || 'ACTIVE')
+      setType(signal.type || 'LONG')
+      setEntryMin(signal.entry?.min || '')
+      setEntryMax(signal.entry?.max || '')
+      setUserEntry(signal.entry?.userEntry || '')
+      setStopLoss(signal.stopLoss || '')
+      setLeverage(signal.leverage || '')
+      setTargets(signal.targets?.map(t => t.level) || [''])
+    }
+  }, [signal])
+
+  const handleTargetChange = (index, value) => {
+    const newTargets = [...targets]
+    newTargets[index] = value
+    setTargets(newTargets)
+  }
+
+  const addTargetField = () => {
+    setTargets([...targets, ''])
+  }
+
+  const removeTargetField = (index) => {
+    const newTargets = targets.filter((_, i) => i !== index)
+    setTargets(newTargets)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -15,15 +51,49 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
     setLoading(true)
 
     try {
+      // Validate targets
+      const validTargets = targets
+        .filter(t => t !== '' && !isNaN(t))
+        .map(t => {
+          const level = parseFloat(t)
+          // Find existing target to preserve reached status
+          const existingTarget = signal.targets?.find(et => et.level === level)
+          return {
+            level: level,
+            reached: existingTarget?.reached || false,
+            reachedAt: existingTarget?.reachedAt || null
+          }
+        })
+
+      if (validTargets.length === 0) {
+        setError('Please add at least one valid target')
+        setLoading(false)
+        return
+      }
+
       let updatedSignal = { ...signal }
 
-      // Add update message
-      updatedSignal.updates = updatedSignal.updates || []
-      updatedSignal.updates.push({
-        message: message || `Update`,
-        type: updateType,
-        timestamp: new Date()
-      })
+      // Update signal fields
+      updatedSignal.status = status
+      updatedSignal.type = type
+      updatedSignal.entry = {
+        min: parseFloat(entryMin),
+        max: parseFloat(entryMax),
+        userEntry: userEntry ? parseFloat(userEntry) : undefined
+      }
+      updatedSignal.stopLoss = parseFloat(stopLoss)
+      updatedSignal.leverage = leverage || undefined
+      updatedSignal.targets = validTargets
+
+      // Add update message if provided
+      if (message || updateType !== 'UPDATE') {
+        updatedSignal.updates = updatedSignal.updates || []
+        updatedSignal.updates.push({
+          message: message || `Signal updated: ${updateType}`,
+          type: updateType,
+          timestamp: new Date()
+        })
+      }
 
       // Handle different update types
       if (updateType === 'SL_HIT') {
@@ -65,29 +135,214 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
         </div>
       )}
 
-      <div style={{ marginBottom: '1rem', padding: '1rem', background: '#0f172a', borderRadius: '0.5rem' }}>
-        <div><strong>Channel:</strong> {signal.channelName}</div>
-        <div><strong>Type:</strong> {signal.type}</div>
-        <div><strong>Status:</strong> {signal.status}</div>
-        <div><strong>Reached Targets:</strong> {signal.reachedTargets || 0} / {signal.targets.length}</div>
-        <div style={{ marginTop: '0.5rem' }}>
-          <strong>Targets:</strong>
-          {signal.targets.map((target, idx) => (
-            <span
-              key={idx}
+      <form onSubmit={handleSubmit}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
+              Status *
+            </label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              required
               style={{
-                marginLeft: '0.5rem',
-                color: target.reached ? '#10b981' : '#94a3b8',
-                textDecoration: target.reached ? 'line-through' : 'none'
+                width: '100%',
+                padding: '0.5rem',
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '0.5rem',
+                color: '#e2e8f0'
               }}
             >
-              TP{idx + 1}: {target.level} {target.reached && '✓'}
-            </span>
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="PARTIAL">PARTIAL</option>
+              <option value="COMPLETED">COMPLETED</option>
+              <option value="STOPPED">STOPPED</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
+              Type *
+            </label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              required
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '0.5rem',
+                color: '#e2e8f0'
+              }}
+            >
+              <option value="LONG">LONG</option>
+              <option value="SHORT">SHORT</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
+              Entry Min *
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={entryMin}
+              onChange={(e) => setEntryMin(e.target.value)}
+              required
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '0.5rem',
+                color: '#e2e8f0'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
+              Entry Max *
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={entryMax}
+              onChange={(e) => setEntryMax(e.target.value)}
+              required
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '0.5rem',
+                color: '#e2e8f0'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
+              User Entry (optional)
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={userEntry}
+              onChange={(e) => setUserEntry(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '0.5rem',
+                color: '#e2e8f0'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
+              Stop Loss *
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={stopLoss}
+              onChange={(e) => setStopLoss(e.target.value)}
+              required
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '0.5rem',
+                color: '#e2e8f0'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
+              Leverage (optional)
+            </label>
+            <input
+              type="text"
+              value={leverage}
+              onChange={(e) => setLeverage(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '0.5rem',
+                color: '#e2e8f0'
+              }}
+            />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <label style={{ color: '#94a3b8' }}>Targets (TP) *</label>
+            <button
+              type="button"
+              onClick={addTargetField}
+              style={{
+                padding: '0.25rem 0.75rem',
+                background: '#10b981',
+                border: 'none',
+                borderRadius: '0.375rem',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '0.875rem'
+              }}
+            >
+              + Add Target
+            </button>
+          </div>
+          {targets.map((target, index) => (
+            <div key={index} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <input
+                type="number"
+                step="any"
+                value={target}
+                onChange={(e) => handleTargetChange(index, e.target.value)}
+                placeholder={`TP${index + 1}`}
+                required={index === 0}
+                style={{
+                  flex: 1,
+                  padding: '0.5rem',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: '0.5rem',
+                  color: '#e2e8f0'
+                }}
+              />
+              {targets.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeTargetField(index)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: '#ef4444',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    color: 'white',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
           ))}
         </div>
-      </div>
 
-      <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>
             Update Type *
