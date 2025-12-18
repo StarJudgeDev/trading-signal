@@ -145,6 +145,7 @@ function SignalsList() {
                 <th>Channel</th>
                 <th>Type</th>
                 <th>Pair</th>
+                <th>Last Price</th>
                 <th>Entry</th>
                 <th>Targets</th>
                 <th>Stop Loss</th>
@@ -171,6 +172,23 @@ function SignalsList() {
                       </span>
                     </td>
                     <td><strong>{signal.pair}</strong></td>
+                    <td>
+                      {signal.currentPrice !== null && signal.currentPrice !== undefined ? (
+                        <div style={{ 
+                          fontWeight: '600',
+                          color: signal.status === 'STOPPED' ? '#ef4444' : 
+                                 signal.status === 'COMPLETED' ? '#10b981' : 
+                                 signal.status === 'PARTIAL' ? '#f59e0b' : '#60a5fa'
+                        }}>
+                          {signal.currentPrice.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 8
+                          })}
+                        </div>
+                      ) : (
+                        <span style={{ color: '#64748b', fontStyle: 'italic' }}>N/A</span>
+                      )}
+                    </td>
                     <td>
                       {signal.entry.min} - {signal.entry.max}
                       {signal.entry.userEntry && (
