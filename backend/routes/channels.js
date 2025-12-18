@@ -12,7 +12,18 @@ router.get('/', async (req, res) => {
     const channels = await Channel.find()
       .sort({ createdAt: -1 });
     
-    res.json(channels);
+    // Calculate totalSignals for each channel dynamically
+    const channelsWithStats = await Promise.all(
+      channels.map(async (channel) => {
+        const signalCount = await Signal.countDocuments({ channelId: channel._id });
+        return {
+          ...channel.toObject(),
+          totalSignals: signalCount
+        };
+      })
+    );
+    
+    res.json(channelsWithStats);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
