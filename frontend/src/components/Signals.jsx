@@ -213,7 +213,8 @@ function Signals() {
                           key={idx}
                           style={{
                             color: target.reached ? '#10b981' : '#94a3b8',
-                            textDecoration: target.reached ? 'line-through' : 'none'
+                            textDecoration: target.reached ? 'line-through' : 'none',
+                            fontWeight: target.reached ? '600' : 'normal'
                           }}
                         >
                           TP{idx + 1}: {target.level}
@@ -221,9 +222,28 @@ function Signals() {
                         </div>
                       ))}
                     </td>
-                    <td>{signal.stopLoss}</td>
                     <td>
-                      {signal.reachedTargets} / {signal.targets.length}
+                      <div style={{ color: signal.status === 'STOPPED' ? '#ef4444' : '#e2e8f0' }}>
+                        {signal.stopLoss}
+                        {signal.status === 'STOPPED' && (
+                          <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.25rem' }}>
+                            (Hit)
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ 
+                        color: signal.reachedTargets > 0 ? '#10b981' : '#94a3b8',
+                        fontWeight: signal.reachedTargets > 0 ? '600' : 'normal'
+                      }}>
+                        {signal.reachedTargets} / {signal.targets.length}
+                        {signal.status === 'STOPPED' && signal.reachedTargets > 0 && (
+                          <div style={{ fontSize: '0.75rem', color: '#fbbf24', marginTop: '0.25rem' }}>
+                            (Before SL)
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td>{getStatusBadge(signal.status)}</td>
                     <td>

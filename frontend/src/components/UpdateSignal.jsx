@@ -20,6 +20,8 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
   const [status, setStatus] = useState(signal?.status || 'ACTIVE')
   const [originalStatus, setOriginalStatus] = useState(signal?.status || 'ACTIVE')
   const [type, setType] = useState(signal?.type || 'LONG')
+  const [symbol, setSymbol] = useState(signal?.symbol || '')
+  const [pair, setPair] = useState(signal?.pair || '')
   const [entryMin, setEntryMin] = useState(signal?.entry?.min || '')
   const [entryMax, setEntryMax] = useState(signal?.entry?.max || '')
   const [userEntry, setUserEntry] = useState(signal?.entry?.userEntry || '')
@@ -35,6 +37,8 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
       setStatus(signal.status || 'ACTIVE')
       setOriginalStatus(signal.status || 'ACTIVE')
       setType(signal.type || 'LONG')
+      setSymbol(signal.symbol || '')
+      setPair(signal.pair || '')
       setEntryMin(signal.entry?.min || '')
       setEntryMax(signal.entry?.max || '')
       setUserEntry(signal.entry?.userEntry || '')
@@ -371,7 +375,7 @@ function UpdateSignal({ signal, onUpdate, onCancel }) {
             fontSize: '0.875rem',
             color: '#fbbf24'
           }}>
-            <strong>Note:</strong> Status changed from {originalStatus} to {status}. All target reached flags will be reset.
+            <strong>Warning:</strong> Status changed from {originalStatus} to {status}. All target reached flags will be reset and price history will be cleared.
           </div>
         )}
 

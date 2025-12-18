@@ -178,26 +178,28 @@ router.post('/:id/price', async (req, res) => {
     // Update reached targets count
     signal.reachedTargets = (signal.reachedTargets || 0) + newTargetsReached;
     
-    // Update status
-    if (signal.reachedTargets === signal.targets.length) {
-      signal.status = 'COMPLETED';
-    } else if (signal.reachedTargets > 0) {
-      signal.status = 'PARTIAL';
-    }
-    
-    // Check stop loss (for LONG: price <= stopLoss, for SHORT: price >= stopLoss)
+    // Check stop loss FIRST (for LONG: price <= stopLoss, for SHORT: price >= stopLoss)
+    // This ensures stop loss takes priority, but we still preserve reached TPs
     const stopLossHit = isLong 
       ? priceValue <= signal.stopLoss 
       : priceValue >= signal.stopLoss;
     
-    if (stopLossHit && signal.status !== 'STOPPED') {
+    if (stopLossHit) {
+      // Stop loss hit - set status to STOPPED
       signal.status = 'STOPPED';
       signal.updates = signal.updates || [];
       signal.updates.push({
-        message: `Stop loss hit at price ${priceValue}`,
+        message: `Stop loss hit at price ${priceValue}. Reached ${signal.reachedTargets} target(s) before stop loss.`,
         type: 'SL_HIT',
         timestamp: priceTimestamp
       });
+    } else {
+      // No stop loss hit - update status based on reached targets
+      if (signal.reachedTargets === signal.targets.length) {
+        signal.status = 'COMPLETED';
+      } else if (signal.reachedTargets > 0) {
+        signal.status = 'PARTIAL';
+      }
     }
     
     signal.updatedAt = new Date();
